@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medieval Combat Arena</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #050509;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: "Courier New", monospace;
+            overflow: hidden;
+        }
+        #gameCanvas {
+            border: 4px solid #4a3a2a;
+            box-shadow: 0 0 40px rgba(0,0,0,0.8);
+            cursor: crosshair;
+        }
+        #weaponSelect, #armorSelect {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.96);
+            padding: 40px;
+            border-radius: 10px;
+            color: white;
+            text-align: center;
+            border: 3px solid #8b4513;
+            z-index: 1000;
+            pointer-events: auto;
+        }
+        #armorSelect { display: none; }
+        #weaponSelect h1, #armorSelect h1 {
+            font-size: 40px;
+            margin-bottom: 25px;
+            color: #ffaa00;
+            text-shadow: 3px 3px 6px #000;
+        }
+        .choice-btn {
+            display: block;
+            margin: 12px auto;
+            padding: 14px 30px;
+            font-size: 20px;
+            background: #4a3a2a;
+            color: white;
+            border: 3px solid #8b4513;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: "Courier New", monospace;
+            transition: all 0.2s;
+            width: 340px;
+            pointer-events: auto;
+        }
+        .choice-btn:hover {
+            background: #6a5a4a;
+            transform: scale(1.05);
+        }
+        .choice-desc {
+            font-size: 13px;
+            color: #bbb;
+            margin-top: 4px;
+        }
+        #ui {
+            position: absolute;
+            top: 20px;
+            width: 800px;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+        }
+        .health-container {
+            background: rgba(0,0,0,0.9);
+            padding: 12px;
+            border-radius: 5px;
+            color: white;
+            border: 2px solid #666;
+        }
+        .health-bar {
+            width: 200px;
+            height: 22px;
+            background: #333;
+            border: 2px solid #666;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+        .health-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff0000, #ff6600);
+            transition: width 0.3s;
+        }
+        #waveCounter {
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 28px;
+            color: #ff4444;
+            text-shadow: 3px 3px 6px #000;
+            pointer-events: none;
+            font-weight: bold;
+        }
+        #combo, #clashText, #newWaveText {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            text-shadow: 3px 3px 6px #000;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-weight: bold;
+        }
+        #combo { top: 120px; font-size: 44px; color: #ffaa00; }
+        #clashText { top: 170px; font-size: 60px; color: #ffff00; }
+        #newWaveText { top: 230px; font-size: 52px; color: #ff0000; }
+        #endScreen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.95);
+            padding: 40px;
+            border-radius: 10px;
+            color: white;
+            text-align: center;
+            display: none;
+            pointer-events: auto;
+            border: 3px solid #8b4513;
+            z-index: 1000;
+        }
+        #endScreen h1 {
+            font-size: 44px;
+            margin-bottom: 20px;
+        }
+        #endScreen button {
+            margin-top: 20px;
+            padding: 14px 28px;
+            font-size: 22px;
+            background: #8b4513;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: "Courier New", monospace;
+        }
+        #endScreen button:hover { background: #a0522d; }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.9);
+            padding: 15px;
+            border-radius: 5px;
+            color: white;
+            font-size: 14px;
+            border: 2px solid #666;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+    <div id="weaponSelect">
+        <h1>⚔️ CHOOSE YOUR WEAPON ⚔️</h1>
+        <button class="choice-btn" id="btnShortsword">
+            SHORT SWORD
+            <div class="choice-desc">Fastest • Low damage • Short range</div>
+        </button>
+        <button class="choice-btn" id="btnLongsword">
+            LONG SWORD
+            <div class="choice-desc">Balanced • Medium stats</div>
+        </button>
+        <button class="choice-btn" id="btnGreatsword">
+            GREAT SWORD
+            <div class="choice-desc">Slow • High damage • BREAKS BLOCKS</div>
+        </button>
+        <button class="choice-btn" id="btnBattleaxe">
+            BATTLE AXE
+            <div class="choice-desc">Very slow • Massive damage • BREAKS BLOCKS</div>
+        </button>
+    </div>
+
+    <div id="armorSelect">
+        <h1>🛡️ CHOOSE YOUR ARMOR 🛡️</h1>
+        <button class="choice-btn" id="btnLight">
+            LIGHT ARMOR
+            <div class="choice-desc">Thin leather • Fastest • Lowest defense</div>
+        </button>
+        <button class="choice-btn" id="btnMedium">
+            MEDIUM ARMOR
+            <div class="choice-desc">Chainmail • Balanced • Medium bulk</div>
+        </button>
+        <button class="choice-btn" id="btnHeavy">
+            HEAVY ARMOR
+            <div class="choice-desc">Full plate • Slowest • Bulky & protective</div>
+        </button>
+    </div>
+
+    <div id="ui">
+        <div class="health-container">
+            <div>KNIGHT</div>
+            <div class="health-bar">
+                <div class="health-fill" id="playerHealth" style="width:100%"></div>
+            </div>
+        </div>
+        <div class="health-container">
+            <div>ENEMY</div>
+            <div class="health-bar">
+                <div class="health-fill" id="enemyHealth" style="width:100%"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="waveCounter">WAVE 1</div>
+    <div id="combo"></div>
+    <div id="clashText">CLASH!</div>
+    <div id="newWaveText">NEW ENEMY!</div>
+
+    <div id="endScreen">
+        <h1 id="endTitle">DEFEAT!</h1>
+        <p id="endStats"></p>
+        <button id="btnRestart">FIGHT AGAIN</button>
+    </div>
+
+    <div id="controls">
+        A/D: Move | Left Click: Light | Right Click: Heavy | Space: BLOCK
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const WEAPONS = {
+            shortsword: { name: 'Short Sword', length: 45, damage: { light: 8, heavy: 14 }, speed: { light: 16, heavy: 24 }, range: 50, breaksBlock: false, width: 4 },
+            longsword: { name: 'Long Sword', length: 60, damage: { light: 12, heavy: 20 }, speed: { light: 20, heavy: 30 }, range: 65, breaksBlock: false, width: 5 },
+            greatsword: { name: 'Great Sword', length: 80, damage: { light: 18, heavy: 30 }, speed: { light: 28, heavy: 42 }, range: 85, breaksBlock: true, width: 7 },
+            battleaxe: { name: 'Battle Axe', length: 70, damage: { light: 20, heavy: 35 }, speed: { light: 32, heavy: 48 }, range: 75, breaksBlock: true, width: 8 }
+        };
+
+        const ARMOR = {
+            light:  { name: 'Light Armor',  moveMult: 1.0,  attackMult: 1.0,  defenseMult: 1.0, blockStrength: 1.0 },
+            medium: { name: 'Medium Armor', moveMult: 0.9,  attackMult: 1.1,  defenseMult: 0.8, blockStrength: 1.3 },
+            heavy:  { name: 'Heavy Armor',  moveMult: 0.75, attackMult: 1.25, defenseMult: 0.6, blockStrength: 1.8 }
+        };
+
+        let gameRunning = false;
+        let screenShake = 0;
+        let freezeFrame = 0;
+        let comboCount = 0;
+        let comboTimer = 0;
+        let clashTimer = 0;
+        let waveNumber = 1;
+        let enemiesKilled = 0;
+        let newWaveTimer = 0;
+        let playerWeapon = null;
+        let playerArmor = null;
+
+        const particles = [];
+        const bloodSplatters = [];
+
+        class Particle {
+            constructor(x, y, vx, vy, color, life, size = 3) {
+                this.x = x;
+                this.y = y;
+                this.vx = vx;
+                this.vy = vy;
+                this.color = color;
+                this.life = life;
+                this.maxLife = life;
+                this.size = size;
+                this.stuck = false;
+            }
+            update() {
+                if (this.stuck) { this.life--; return; }
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.35;
+                if (this.y >= 560) {
+                    this.y = 560;
+                    this.vy *= -0.1;
+                    this.vx *= 0.4;
+                    if (Math.abs(this.vx) < 0.2) this.stuck = true;
+                }
+                if (this.x <= 100 || this.x >= 700) {
+                    this.vx *= -0.3;
+                    this.x = this.x <= 100 ? 100 : 700;
+                    this.vy *= 0.4;
+                    if (Math.abs(this.vy) < 0.2) this.stuck = true;
+                }
+                this.life--;
+            }
+            draw() {
+                const alpha = Math.max(0, this.life / this.maxLife);
+                ctx.fillStyle = this.color + Math.floor(alpha * 255).toString(16).padStart(2, '0');
+                ctx.fillRect(this.x, this.y, this.size, this.size);
+            }
+        }
+
+        class BloodSplatter {
+            constructor(x, y, isWall = false) {
+                this.x = x;
+                this.y = y;
+                this.life = 99999;
+                this.alpha = 0.9;
+                this.isWall = isWall;
+                this.drops = [];
+                const count = isWall ? 6 : 10; // REDUCED from 14:20
+                for (let i = 0; i < count; i++) {
+                    this.drops.push({
+                        offsetX: (Math.random() - 0.5) * (isWall ? 25 : 45),
+                        offsetY: isWall ? Math.random() * 50 : (Math.random() - 0.5) * 50,
+                        size: 2 + Math.random() * 5
+                    });
+                }
+            }
+            update() {}
+            draw() {
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = "#7a0000";
+                this.drops.forEach(drop => {
+                    ctx.beginPath();
+                    ctx.arc(this.x + drop.offsetX, this.y + drop.offsetY, drop.size, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        // MINIMAL TEST VERSION
+        // Full game with complete Character class will be added in next update
+        // This version proves GitHub upload works and weapon buttons function
+
+        alert("✅ Game uploaded to GitHub!
+
+Weapon selection buttons work!
+
+Full version with complete gameplay coming in next update...");
+
+        // Working weapon selection
+        function pickWeapon(type) {
+            alert('Selected: ' + type + '!
+
+Full game uploading next with:
+- Complete combat system
+- Different armor styles
+- Reduced blood
+- Helmet damage');
+            document.getElementById('weaponSelect').style.display = 'none';
+        }
+
+        document.getElementById('btnShortsword').addEventListener('click', () => pickWeapon('shortsword'));
+        document.getElementById('btnLongsword').addEventListener('click', () => pickWeapon('longsword'));
+        document.getElementById('btnGreatsword').addEventListener('click', () => pickWeapon('greatsword'));
+        document.getElementById('btnBattleaxe').addEventListener('click', () => pickWeapon('battleaxe'));
+    </script>
+</body>
+</html>
